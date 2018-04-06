@@ -9,9 +9,8 @@
 <meta name="generator" content="pandoc" />
 
 
-<meta name="author" content="David Bread" />
+<meta name="author" content="David Bread, April 6, 2018" />
 
-<meta name="date" content="2018-04-04" />
 
 <title>Practical Machine Learning Final</title>
 
@@ -305,8 +304,7 @@ $(document).ready(function () {
 
 
 <h1 class="title toc-ignore">Practical Machine Learning Final</h1>
-<h4 class="author"><em>David Bread</em></h4>
-<h4 class="date"><em>April 4, 2018</em></h4>
+<h4 class="author"><em>David Bread, April 6, 2018</em></h4>
 
 </div>
 
@@ -335,8 +333,8 @@ $(document).ready(function () {
 <p>Machine learning algorithms generally fall into regression models (e.g. lm), and non-linear models (e.g. random forest). <em>caret</em> standardizes the interface to these different models using the <em>train</em> function. The Practical Machine Learning course provided not much than general guidance for selecting a machine learning algorithm for a given problem. My final choices of algos to try reflect those discussed in the course, but there are literally hundreds of different machine learning alorithms one could use to train a model using the caret package, as this <a href="https://rdrr.io/cran/caret/man/models.html">link</a> abundantly demonstrates. The following table summarizes the models I used in the order in which they were trained.</p>
 <table>
 <colgroup>
-<col style="width: 69%"></col>
-<col style="width: 30%"></col>
+<col style="width: 68%"></col>
+<col style="width: 31%"></col>
 </colgroup>
 <thead>
 <tr class="header">
@@ -365,20 +363,17 @@ $(document).ready(function () {
 </table>
 <p>Hopefully, at least one model in this set, properly parameterized, would be sufficient to achieve the predication goal of 99% plus accuracy.</p>
 <p>Per Len’s instruction, I enabled multi-core processing to boost performance, and used the same seed value (4939) to ensure that any randomized functions of the machine learning algrorithms were replicable. The <em>control</em> parameter of train also needed to be consistent to ensure that the resulting accuracy measures were comparable. The control parameter is shown below under <em>Model Comparison</em>.</p>
-<p>I then fit models on each training set, and saved the resulting models using the saveRDS command to avoid having to re-compute them. Finally, I predicted the classe variable in each of the 20 test set observations using each of the models.</p>
+<p>I then fit models on each training set, and saved the resulting models using the saveRDS command to avoid having to re-compute them. Finally, I predicted the classe variable in each of the 20 test set observations using each of the models, and used the pass the prediction quiz.</p>
 </section>
 <section id="model-comparison" class="level2">
 <h2>Model Comparison</h2>
-<p>Before diving into model comparison,</p>
-<p>Out-of-sample error is estimated in regression algorithms by “mean squared error (MSE)” or “root mean squared error (RMSE)”, and in non-regression algorithms by “cross-validation”. Since the model that ulimately solved the program was non-linear, we’ll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I’ll use this to explain.</p>
+<p>Before diving into model comparison, let’s accuracy and out-of-sample (or “out-of-bag”) error. Out-of-sample error is estimated in regression algorithms by “mean squared error (MSE)” or “root mean squared error (RMSE)”, and in non-regression algorithms by “cross-validation”. Since the model that ulimately solved the program was non-linear, we’ll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I’ll use this to explain.</p>
 <p>Let’s look at the trainControl parameters that I’ll hold constant while training each model.</p>
 <pre class="r"><code>control &lt;- trainControl(method = &quot;repeatedcv&quot;, number = 10, repeats = 3, allowParallel = TRUE)</code></pre>
-<p>Using repeatedcv with 10 folds, repeated 3 times, we are essentially breaking the training dataset up into 10 training sets of equal size, and holding out one of the sets to use for out-of-sample error estimation. So we create model using on the 9 sets and test on 1, and thereby obtain an accuracy estimate of the fold while testing.</p>
+<p>Using repeatedcv with 10 folds, repeated 3 times, we are essentially breaking the training dataset up into 10 training sets of equal size, and holding out one of the sets to use for out-of-sample error estimation. So we create model using the 9 sets and test on 1, and thereby obtain an accuracy estimate of the fold while testing.</p>
 <p>We then interate through each of the 10 folds in this manner, holding out a different set for testing at each iteration. At each iteration, we obtain a model trained on that fold. Then we test the model with the held out test data for that fold.</p>
 <p>The results obtained when the model was trained is compared with the results of the test. The delta of the correct classifications versus incorrect classifications is tabulated. This value represents the accuracy of the model for a given iteration. Out-of-sample error is 1 - accuracy rate.</p>
 <p>Since we specified “repeat = 3” as another trainControl parameter, we repeat the entire process again twice. The final result represents an aggregate of all three runs of the algorithm.</p>
-<p>We then</p>
-<p>In regression alorithms, out-of-sample error is estimated by calculating the RMSE. In non-linear algorithms, out-of-sample error is estimated by running the test data held out in each fold through the model trained on that fold. Iterating through subsequent folds – need more info</p>
 <p>The confusion matrix will help us compare the results of our models.</p>
 <table class="kable_wrapper">
 <tbody>
@@ -387,7 +382,7 @@ $(document).ready(function () {
 <table>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">GLM Model______</td>
+<td style="text-align: left;">GLM Model_________________</td>
 </tr>
 </tbody>
 </table>
@@ -396,7 +391,7 @@ $(document).ready(function () {
 <table>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">CART Model______</td>
+<td style="text-align: left;">CART Model_________________</td>
 </tr>
 </tbody>
 </table>
@@ -476,7 +471,7 @@ $(document).ready(function () {
 <table>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">_______</td>
+<td style="text-align: left;">_______________</td>
 </tr>
 </tbody>
 </table>
@@ -541,7 +536,7 @@ $(document).ready(function () {
 <table>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">_______</td>
+<td style="text-align: left;">__________________</td>
 </tr>
 </tbody>
 </table>
@@ -612,7 +607,7 @@ $(document).ready(function () {
 <table>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">SVM Model______</td>
+<td style="text-align: left;">SVM Model_________________</td>
 </tr>
 </tbody>
 </table>
@@ -621,7 +616,7 @@ $(document).ready(function () {
 <table>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">KNN Model______</td>
+<td style="text-align: left;">KNN Model_________________</td>
 </tr>
 </tbody>
 </table>
