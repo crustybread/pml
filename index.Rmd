@@ -71,24 +71,15 @@ As you can see from the matrix, there are few correlations and they all are posi
 Machine learning algorithms generally fall into regression models (e.g. lm), and non-linear models (e.g. random forest). *caret* standardizes the interface to these different models using the *train* function. The Practical Machine Learning course provided not much more than general guidance regarding the selection of a machine learning algorithm for a given situation. My final configuration of algos to try reflect those discussed in the course, but there are literally hundreds of different machine learning alorithms one could use to train a model using the caret package, as this [link](https://rdrr.io/cran/caret/man/models.html) abundantly demonstrates. The following table summarizes the models I used in the order in which they were trained.
 
 
-Regression                           | Non-Linear
--------------------------------------|-----------------
-1. Generalized Linear Model (GLM)    | 3. Classification and Regression Trees (CART)
-2. Linear Discriminant Analysis (LDA)| 4. Support Vector Machines (SVM)
-.                               | 5. K-Nearest Neighbors (KNN)
-.                               | 6. Random Forest (RF)
-
-
-
-
-
 ```{r k1, echo=FALSE}
 
-Label0 <- c("Regression", "Non-Linear")
-RegVar <- c("Generalized Linear Model (GLM)", "Linear Discriminant Analysis (LDA)")
-NRegVar <- c("Classification and Regression Trees (CART), "Support Vector Machines (SVM)", "K-Nearest Neighbors (KNN)", "Random Forest (RF)")
-types <- data.frame(RegVar, NRegVar, Label0)
-kable(types)
+Regression <- c("Generalized Linear Model (GLM)", "Linear Discriminant Analysis (LDA)")
+Classification <- c("Classification and Regression Trees (CART)", "Support Vector Machines (SVM)", "K-Nearest Neighbors (KNN)", "Random Forest (RF)")
+t <- data.frame(Regression, Classification)
+t[3,1] <- "."
+t[4,1] <- "."
+t <- na.omit(t)
+kable(t)
 
 
 ```
@@ -192,7 +183,7 @@ Since we specified "repeat = 3" as another trainControl parameter, we repeat the
 
 The confusion matrix will help us compare the results of our models. 
 
-``` {r confuse, eval = TRUE, echo = FALSE, cache = TRUE}
+``` {r confuse, eval = TRUE, echo = FALSE, cache = TRUE, warning=FALSE}
 
 #confusionMatrix(actual from training data cross-validation, predicted)
 c1 <- confusionMatrix(tr1$classe, fit.glm.p)
@@ -202,7 +193,6 @@ c4 <- confusionMatrix(tr1$classe, fit.svm.p)
 c5 <- confusionMatrix(tr1$classe, fit.knn.p)
 c6 <- confusionMatrix(tr1$classe, fit.rf.p)
 
-c1 <- as.matrix(c1)
 
 
 knitr::kable(list("GLM Model_________________", " CART Model_________________", "LDA Model"))
@@ -214,24 +204,23 @@ knitr::kable(list(c4$table,"_______", c5$table, "_______", c6$table))
 
 
 
-```{r k2, echo=FALSE}
+{r k2, echo=FALSE, eval=FALSE}
 
-Label1 <- c("GLM Model", "CART Model", "LDA Model")
+#Label1 <- c("GLM Model", "CART Model", "LDA Model")
 cm1 <- data.frame(c1, c2, c3)
 kable(cm1)
 
 
-```
 
 
-```{r k3, echo=FALSE}
+{r k3, echo=FALSE, evalu=FALSE}
 
 Label2 <- c("SVM Model", "KNN Model", "RF Model")
 cm2 <- list(c4, c5, c6)
 kable(cm2)
 
 
-```
+
 
 Let's intepret the matrices. The x-axis reflects predictions, and the y-axis reflects observations. So in the GLM Model matrix, a value of 4506 in [x1, y1] indicates that in our training set of 19622 records, we predicted that 4506 records were A and we observed that 4506 were A. But if you look at [x1, y2], the value is 1074. This indicates that we predicted 1074 were B, when they should have been classified as A. So values on the diagonal of the matrix are where predictions match the observations. Any other value on the same row is an error. So on the first row, our out of bag error rate is 1074/4506, or around 23.8%. Repeating for the remaining rows:
 2: 389/3408 = 11.4%
