@@ -1,7 +1,6 @@
 ---
 title: "Practical Machine Learning Final"
-author: "David Bread"
-date: "April 4, 2018"
+author: "David Bread, April 6, 2018"
 output: html_document
 ---
 
@@ -71,18 +70,18 @@ As you can see from the matrix, there are few correlations and they all are posi
 Machine learning algorithms generally fall into regression models (e.g. lm), and non-linear models (e.g. random forest). *caret* standardizes the interface to these different models using the *train* function. The Practical Machine Learning course provided not much than general guidance for selecting a machine learning algorithm for a given problem. My final choices of algos to try reflect those discussed in the course, but there are literally hundreds of different machine learning alorithms one could use to train a model using the caret package, as this [link](https://rdrr.io/cran/caret/man/models.html) abundantly demonstrates. The following table summarizes the models I used in the order in which they were trained.
 
 
-Regression                            | Non-Linear
---------------------------------------|-----------------
-1. Generalized Linear Model (GLM)     | 3. Classification and Regression Trees (CART)
-2. Linear Discriminant Analysis (LDA) | 4. Support Vector Machines (SVM)
-.                                     | 5. K-Nearest Neighbors (KNN)
-.                                     | 6. Random Forest (RF)
+Regression                           | Non-Linear
+-------------------------------------|-----------------
+1. Generalized Linear Model (GLM)    | 3. Classification and Regression Trees (CART)
+2. Linear Discriminant Analysis (LDA)| 4. Support Vector Machines (SVM)
+.                               | 5. K-Nearest Neighbors (KNN)
+.                               | 6. Random Forest (RF)
 
 Hopefully, at least one model in this set, properly parameterized, would be sufficient to achieve the predication goal of 99% plus accuracy.
 
 Per Len's instruction, I enabled multi-core processing to boost performance, and used the same seed value (4939) to ensure that any randomized functions of the machine learning algrorithms were replicable. The *control* parameter of train also needed to be consistent to ensure that the resulting accuracy measures were comparable. The control parameter is shown below under *Model Comparison*.
 
-I then fit models on each training set, and saved the resulting models using the saveRDS command to avoid having to re-compute them. Finally, I predicted the classe variable in each of the 20 test set observations using each of the models. 
+I then fit models on each training set, and saved the resulting models using the saveRDS command to avoid having to re-compute them. Finally, I predicted the classe variable in each of the 20 test set observations using each of the models, and used the pass the prediction quiz. 
 
 ```{r train_models, eval=TRUE, echo=FALSE, cache=TRUE}
 
@@ -154,9 +153,7 @@ fit.rf.p <- predict(fit.rf, tr1)
 
 ## Model Comparison
 
-Before diving into model comparison, 
-
-Out-of-sample error is estimated in regression algorithms by "mean squared error (MSE)" or "root mean squared error (RMSE)", and in non-regression algorithms by "cross-validation". Since the model that ulimately solved the program was non-linear, we'll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I'll use this to explain. 
+Before diving into model comparison, let's accuracy and out-of-sample (or "out-of-bag") error. Out-of-sample error is estimated in regression algorithms by "mean squared error (MSE)" or "root mean squared error (RMSE)", and in non-regression algorithms by "cross-validation". Since the model that ulimately solved the program was non-linear, we'll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I'll use this to explain. 
 
 Let's look at the trainControl parameters that I'll hold constant while training each model. 
 
@@ -166,18 +163,13 @@ control <- trainControl(method = "repeatedcv", number = 10, repeats = 3, allowPa
 
 ```
 
-Using repeatedcv with 10 folds, repeated 3 times, we are essentially breaking the training dataset up into 10 training sets of equal size, and holding out one of the sets to use for out-of-sample error estimation. So we create model using on the 9 sets and test on 1, and thereby obtain an accuracy estimate of the fold while testing. 
+Using repeatedcv with 10 folds, repeated 3 times, we are essentially breaking the training dataset up into 10 training sets of equal size, and holding out one of the sets to use for out-of-sample error estimation. So we create model using the 9 sets and test on 1, and thereby obtain an accuracy estimate of the fold while testing. 
 
 We then interate through each of the 10 folds in this manner, holding out a different set for testing at each iteration. At each iteration, we obtain a model trained on that fold. Then we test the model with the held out test data for that fold. 
 
 The results obtained when the model was trained is compared with the results of the test. The delta of the correct classifications versus incorrect classifications is tabulated. This value represents the accuracy of the model for a given iteration. Out-of-sample error is 1 - accuracy rate. 
 
 Since we specified "repeat = 3" as another trainControl parameter, we repeat the entire process again twice. The final result represents an aggregate of all three runs of the algorithm. 
-
-We then 
-
-In regression alorithms, out-of-sample error is estimated by calculating the RMSE. In non-linear algorithms, out-of-sample error is estimated by running the test data held out in each fold through the model trained on that fold.
-Iterating through subsequent folds  -- need more info
 
 The confusion matrix will help us compare the results of our models. 
 
@@ -191,9 +183,9 @@ c4 <- confusionMatrix(tr1$classe, fit.svm.p)
 c5 <- confusionMatrix(tr1$classe, fit.knn.p)
 c6 <- confusionMatrix(tr1$classe, fit.rf.p)
 
-knitr::kable(list("GLM Model______", " CART Model______", "LDA Model"))
-knitr::kable(list(c1$table, "_______", c2$table, "_______", c3$table))
-knitr::kable(list("SVM Model______", " KNN Model______", "RF Model"))
+knitr::kable(list("GLM Model_________________", " CART Model_________________", "LDA Model"))
+knitr::kable(list(c1$table, "_______________", c2$table, "__________________", c3$table))
+knitr::kable(list("SVM Model_________________", " KNN Model_________________", "RF Model"))
 knitr::kable(list(c4$table,"_______", c5$table, "_______", c6$table))
 
 ```
