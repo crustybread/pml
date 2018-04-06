@@ -15,6 +15,7 @@ library(ggplot2)
 library(parallel)
 library(doParallel)
 library(corrplot)
+library(knitr)
 
 rt <- "k:/Machine Learning/"
 setwd(rt)
@@ -48,7 +49,7 @@ In this project, we've been asked to use machine learning to predict the *classe
 3) Compare the accuracy of the algorithms and their out-of-sample error rates
 4) Use the best algorithm to predict the classe value of each observation in the test dataset; apply the predictions to answer the 20 questions in the Week 4 Prediction quiz
 
-Per Len Greski on his github page, the key to getting 100% accuracy on the prediction quiz to achieve 99% plus accuracy in our final model. He also mentioned that models that achieve this level of accuracy might also be computationally intensive, and seriously tax the capabilities of many home computers. This [link](https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md) describes how to harness parallel processing to boost PC performance in order to run modeling jobs in a reasonable amount of time, an approach I employed in this project. 
+Per Len Greski, the key to getting 100% accuracy on the prediction quiz is to achieve 99% plus accuracy in our final model. He also mentioned that models that achieve this level of accuracy might also be computationally intensive, and seriously tax the capabilities of many home computers. This [link](https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md) to Len's github page describes how to harness parallel processing to boost PC performance in order to run modeling jobs in a reasonable amount of time, an approach I employed in this project. 
 
 ## Dataset Transformation
 The original training dataset has 160 variables and 19622 observations. I removed the first six columns of purely descriptive information (row index, user, timestamp columns, "new window", and "num window" columns). Apparently, there are 107 columns that are exclusively associated with the "new window" function (i.e. the "new_window" column is equal to "yes"), representing a total 406 observations--0.02% of all the records in the training dataset. For the remaining 19216 records in the dataset, the values in these 107 columns are null or a literal "NA". Therefore, I removed any columns containing data specific to this function, as this data was not available to the remaining 19216 records (I felt it would be overkill to attempt to impute the data in these columns as they represent such a small percentage of the total number of records). After culling, 53 columns remain for the full training set of 19622 observations, the final column being the outcome variable "classe". I repeated this procedure on the testing dataset.
@@ -62,12 +63,12 @@ corrplot(M, method = "circle", tl.cex = 0.5) #plot matrix
 
 ```
 
-As you can see from the matrix, there are few correlations and they all are positive (blue). (Negative correlations are displayed in red.) Circle shading and size are used to represent the degree of correlation. In the interests of getting a model with lower bias, we'll opt for greater complexity and leave in all the 52 predictors.
+As you can see from the matrix, there are few correlations and they all are positive (blue). (Negative correlations are displayed in red.) Circle shading and size are used to represent the degree of correlation. In the interests of getting a model with lower bias, we'll opt for greater complexity and leave in all the 52 predictors. If it turns out that we can't achieve the required accuracy in a model using all the predictors, we'll revisit reducing the number of features.
 
 ## Training the Models
 *Classe* is a factor variable taking five values--A, B, C, D, E--each representing a particular way in which a weight-lifting exercise was done. Predicting the classe variable in the 20 observations in the test dataset is an example of a non-binary classification problem. 
 
-Machine learning algorithms generally fall into regression models (e.g. lm), and non-linear models (e.g. random forest). *caret* standardizes the interface to these different models using the *train* function. The Practical Machine Learning course provided not much than general guidance for selecting a machine learning algorithm for a given problem. My final choices of algos to try reflect those discussed in the course, but there are literally hundreds of different machine learning alorithms one could use to train a model using the caret package, as this [link](https://rdrr.io/cran/caret/man/models.html) abundantly demonstrates. The following table summarizes the models I used in the order in which they were trained.
+Machine learning algorithms generally fall into regression models (e.g. lm), and non-linear models (e.g. random forest). *caret* standardizes the interface to these different models using the *train* function. The Practical Machine Learning course provided not much more than general guidance regarding the selection of a machine learning algorithm for a given situation. My final configuration of algos to try reflect those discussed in the course, but there are literally hundreds of different machine learning alorithms one could use to train a model using the caret package, as this [link](https://rdrr.io/cran/caret/man/models.html) abundantly demonstrates. The following table summarizes the models I used in the order in which they were trained.
 
 
 Regression                           | Non-Linear
@@ -77,11 +78,27 @@ Regression                           | Non-Linear
 .                               | 5. K-Nearest Neighbors (KNN)
 .                               | 6. Random Forest (RF)
 
+
+
+
+
+```{r k1, echo=FALSE}
+
+Label0 <- c("Regression", "Non-Linear")
+RegVar <- c("Generalized Linear Model (GLM)", "Linear Discriminant Analysis (LDA)")
+NRegVar <- c("Classification and Regression Trees (CART), "Support Vector Machines (SVM)", "K-Nearest Neighbors (KNN)", "Random Forest (RF)")
+types <- data.frame(RegVar, NRegVar, Label0)
+kable(types)
+
+
+```
+
+
 Hopefully, at least one model in this set, properly parameterized, would be sufficient to achieve the predication goal of 99% plus accuracy.
 
-Per Len's instruction, I enabled multi-core processing to boost performance, and used the same seed value (4939) to ensure that any randomized functions of the machine learning algrorithms were replicable. The *control* parameter of train also needed to be consistent to ensure that the resulting accuracy measures were comparable. The control parameter is shown below under *Model Comparison*.
+After enabling multi-core processing to boost performance, I used a constant seed value (4939) to ensure that any randomized functions of the machine learning algrorithms were replicable. The *control* parameter of train also needed to be consistent to ensure that the resulting accuracy measures were comparable. The control parameter is shown below under *Model Comparison*.
 
-I then fit models on each training set, and saved the resulting models using the saveRDS command to avoid having to re-compute them. Finally, I predicted the classe variable in each of the 20 test set observations using each of the models, and used the pass the prediction quiz. 
+I then sequentially fit models on each training set, and saved the resulting models using the saveRDS command to avoid having to re-compute them. Finally, I predicted the classe variable in each of the 20 test set observations using each of the models, and used the best model to pass the prediction quiz. 
 
 ```{r train_models, eval=TRUE, echo=FALSE, cache=TRUE}
 
@@ -89,6 +106,8 @@ I then fit models on each training set, and saved the resulting models using the
 #cluster <- makeCluster(detectCores() - 1)
 #registerDoParallel(cluster)
 control <- trainControl(method = "repeatedcv", number = 10, repeats = 3, allowParallel = TRUE)
+
+
 
 #linear models
 
@@ -153,7 +172,7 @@ fit.rf.p <- predict(fit.rf, tr1)
 
 ## Model Comparison
 
-Before diving into model comparison, let's accuracy and out-of-sample (or "out-of-bag") error. Out-of-sample error is estimated in regression algorithms by "mean squared error (MSE)" or "root mean squared error (RMSE)", and in non-regression algorithms by "cross-validation". Since the model that ulimately solved the program was non-linear, we'll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I'll use this to explain. 
+Before diving into model comparison, let's look at accuracy and out-of-sample (or "out-of-bag") error. Out-of-sample error is estimated in regression algorithms by "mean squared error (MSE)" or "root mean squared error (RMSE)". These would typically be used when the features and outcome are continuous.  In non-regression algorithms "cross-validation" is typically used to accuracy and error. Since the model that ulimately solved the program was non-linear, we'll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I'll use this to explain. 
 
 Let's look at the trainControl parameters that I'll hold constant while training each model. 
 
@@ -183,6 +202,9 @@ c4 <- confusionMatrix(tr1$classe, fit.svm.p)
 c5 <- confusionMatrix(tr1$classe, fit.knn.p)
 c6 <- confusionMatrix(tr1$classe, fit.rf.p)
 
+c1 <- as.matrix(c1)
+
+
 knitr::kable(list("GLM Model_________________", " CART Model_________________", "LDA Model"))
 knitr::kable(list(c1$table, "_______________", c2$table, "__________________", c3$table))
 knitr::kable(list("SVM Model_________________", " KNN Model_________________", "RF Model"))
@@ -191,17 +213,51 @@ knitr::kable(list(c4$table,"_______", c5$table, "_______", c6$table))
 ```
 
 
+
+```{r k2, echo=FALSE}
+
+Label1 <- c("GLM Model", "CART Model", "LDA Model")
+cm1 <- data.frame(c1, c2, c3)
+kable(cm1)
+
+
+```
+
+
+```{r k3, echo=FALSE}
+
+Label2 <- c("SVM Model", "KNN Model", "RF Model")
+cm2 <- list(c4, c5, c6)
+kable(cm2)
+
+
+```
+
+Let's intepret the matrices. The x-axis reflects predictions, and the y-axis reflects observations. So in the GLM Model matrix, a value of 4506 in [x1, y1] indicates that in our training set of 19622 records, we predicted that 4506 records were A and we observed that 4506 were A. But if you look at [x1, y2], the value is 1074. This indicates that we predicted 1074 were B, when they should have been classified as A. So values on the diagonal of the matrix are where predictions match the observations. Any other value on the same row is an error. So on the first row, our out of bag error rate is 1074/4506, or around 23.8%. Repeating for the remaining rows:
+2: 389/3408 = 11.4%
+3: 138/3284 = 4.2%
+4: 172/3004 = 5.7%
+5: 95/3512 = 2.7%
+
+The total of these errors is 47.8. 
+
+
+Why do we have zeros "observed" in the regression models!?
+
+
+http://www.dataschool.io/simple-guide-to-confusion-matrix-terminology/
+
+
 ## And the Winner Is...Random Forest!
 
-With well over 99% accuracy, this was the algo that predicted the correct Classe values for all 20 test observations. 
-We could "resample"" to aggregate the results of all these runs, but it may not improve anything.  
+We can see the RF Model confusion matrix reflects 100% agreement between what we predict in the training set and what we observe in the training set.  With well over 99% accuracy, this was the algo that predicted the correct Classe values for all 20 test observations. We could "resample" the models to aggregate the results, and/or use PCA to reduce the number of features, but both are unnecessary and could not improve the result.
 
-It's not clear that random forest would be a suitable solution in many situations where latency is an issue. This algo took by far the longest to run (almost 25 minutes), even with parallel processing enabled. Luckily, this project is not a real-time application, and we can afford to go with the solution with the highest accuracy.
+Luckily, this project is not a real-time application, and we can afford to go with the solution with the highest accuracy. It's not clear that random forest would be a suitable solution in many situations where latency is an issue. This algo took by far the longest to run (almost 25 minutes), even with parallel processing enabled. 
 
 
 ```{r finish, echo=FALSE, cache=TRUE, eval=TRUE}
 
-#make predictions from test dataset
+#make predictions from test dataset to use in prediction quiz
 p.classe  <- predict(fit.rf, ts1)
 print(p.classe)
 
