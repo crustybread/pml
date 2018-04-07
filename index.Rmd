@@ -16,6 +16,7 @@ library(parallel)
 library(doParallel)
 library(corrplot)
 library(knitr)
+library(png)
 
 rt <- "k:/Machine Learning/"
 setwd(rt)
@@ -54,7 +55,7 @@ Per Len Greski, the key to getting 100% accuracy on the prediction quiz is to ac
 ## Dataset Transformation
 The original training dataset has 160 variables and 19622 observations. I removed the first six columns of purely descriptive information (row index, user, timestamp columns, "new window", and "num window" columns). Apparently, there are 107 columns that are exclusively associated with the "new window" function (i.e. the "new_window" column is equal to "yes"), representing a total 406 observations--0.02% of all the records in the training dataset. For the remaining 19216 records in the dataset, the values in these 107 columns are null or a literal "NA". Therefore, I removed any columns containing data specific to this function, as this data was not available to the remaining 19216 records (I felt it would be overkill to attempt to impute the data in these columns as they represent such a small percentage of the total number of records). After culling, 53 columns remain for the full training set of 19622 observations, the final column being the outcome variable "classe". I repeated this procedure on the testing dataset.
 
-Fifty two predictors is still alot. We could check if any of these variables are highly correlated, or at or close to zero, and transform them accordingly. Alernatively, we could could pre-process the training dataset (using Principal Components Analysis) which should reduce the number of predictors automatically. Let's look at correlations first using *corrpot* package.
+Fifty two predictors is still a significant number. We could check if any of these variables are highly correlated, or at or close to zero, and transform them accordingly. Alernatively, we could could pre-process the training dataset (using Principal Components Analysis) which should reduce the number of predictors automatically. Let's look at correlations first using *corrpot* package.
 
 ```{r corr, eval = TRUE, cache = TRUE, echo = FALSE}
 
@@ -63,7 +64,7 @@ corrplot(M, method = "circle", tl.cex = 0.5) #plot matrix
 
 ```
 
-As you can see from the matrix, there are few correlations and they all are positive (blue). (Negative correlations are displayed in red.) Circle shading and size are used to represent the degree of correlation. In the interests of getting a model with lower bias, we'll opt for greater complexity and leave in all the 52 predictors. If it turns out that we can't achieve the required accuracy in a model using all the predictors, we'll revisit reducing the number of features.
+As you can see from the correlation matrix, there aren't that many and they all are positive (blue). (Negative correlations are displayed in red.) Circle shading and size are used to represent the degree of correlation. In the interests of getting a model with lower bias (i.e. a "truer" representation of the actual data), we'll opt for greater complexity and leave in all the 52 predictors. If it turns out that we can't achieve the required accuracy in a model using all the predictors, we'll revisit reducing the number of features.
 
 ## Training the Models
 *Classe* is a factor variable taking five values--A, B, C, D, E--each representing a particular way in which a weight-lifting exercise was done. Predicting the classe variable in the 20 observations in the test dataset is an example of a non-binary classification problem. 
@@ -73,17 +74,13 @@ Machine learning algorithms generally fall into regression models (e.g. lm), and
 
 ```{r k1, echo=FALSE}
 
-Regression <- c("Generalized Linear Model (GLM)", "Linear Discriminant Analysis (LDA)")
-Classification <- c("Classification and Regression Trees (CART)", "Support Vector Machines (SVM)", "K-Nearest Neighbors (KNN)", "Random Forest (RF)")
+Regression <- c("1. Generalized Linear Model (GLM)", "2. Linear Discriminant Analysis (LDA)", " ", " ")
+Classification <- c("3. Classification and Regression Trees (CART)", "4. Support Vector Machines (SVM)", "5. K-Nearest Neighbors (KNN)", "6. Random Forest (RF)")
 t <- data.frame(Regression, Classification)
-t[3,1] <- "."
-t[4,1] <- "."
-t <- na.omit(t)
 kable(t)
 
 
 ```
-
 
 Hopefully, at least one model in this set, properly parameterized, would be sufficient to achieve the predication goal of 99% plus accuracy.
 
@@ -100,7 +97,7 @@ control <- trainControl(method = "repeatedcv", number = 10, repeats = 3, allowPa
 
 
 
-#linear models
+#Linear models
 
 # glm
 set.seed(4939)
@@ -114,7 +111,7 @@ fit.glm <- train(classe~., data=tr1, method="bayesglm", trControl=control)
 
 
 
-#non-linear models
+#Classification models
 
 # CART
 #set.seed(4939)
@@ -145,16 +142,16 @@ fit.glm <- train(classe~., data=tr1, method="bayesglm", trControl=control)
 
 #load from rds file
 #fit.glm <- readRDS("fit.glm.rds")
-fit.cart <- readRDS("fit.cart.rds")
 fit.lda <- readRDS("fit.lda.rds")
+fit.cart <- readRDS("fit.cart.rds")
 fit.svm <- readRDS("fit.svm.rds")
 fit.knn <- readRDS("fit.knn.rds")
 fit.rf <- readRDS("fit.rf.rds")
 
 #predict from models
 fit.glm.p <- predict(fit.glm, tr1)
-fit.cart.p <- predict(fit.cart, tr1)
 fit.lda.p <- predict(fit.lda, tr1)
+fit.cart.p <- predict(fit.cart, tr1)
 fit.svm.p <- predict(fit.svm, tr1)
 fit.knn.p <- predict(fit.knn, tr1)
 fit.rf.p <- predict(fit.rf, tr1)
@@ -185,57 +182,57 @@ The confusion matrix will help us compare the results of our models.
 
 ``` {r confuse, eval = TRUE, echo = FALSE, cache = TRUE, warning=FALSE}
 
-#confusionMatrix(actual from training data cross-validation, predicted)
 c1 <- confusionMatrix(tr1$classe, fit.glm.p)
-c2 <- confusionMatrix(tr1$classe, fit.cart.p)
 c3 <- confusionMatrix(tr1$classe, fit.lda.p)
+c2 <- confusionMatrix(tr1$classe, fit.cart.p)
 c4 <- confusionMatrix(tr1$classe, fit.svm.p)
 c5 <- confusionMatrix(tr1$classe, fit.knn.p)
 c6 <- confusionMatrix(tr1$classe, fit.rf.p)
 
-
-
-knitr::kable(list("GLM Model_________________", " CART Model_________________", "LDA Model"))
-knitr::kable(list(c1$table, "_______________", c2$table, "__________________", c3$table))
-knitr::kable(list("SVM Model_________________", " KNN Model_________________", "RF Model"))
-knitr::kable(list(c4$table,"_______", c5$table, "_______", c6$table))
-
 ```
 
 
+``` {r buildTable, eval = TRUE, echo = FALSE, warning=FALSE, out.width="30%"}
+#t1 <- knitr::kable(list(c1$table), caption = "GLM Model", format = 'latex')
+#t3 <- knitr::kable(list(c3$table), caption = "LDA Model", format = 'latex')
+#t2 <- knitr::kable(list(c2$table), caption = "CART Model", format = 'latex')
+#t4 <- knitr::kable(list(c4$table), caption = "SVM Model", format = 'latex')
+#t5 <- knitr::kable(list(c5$table), caption = "KNN Model", format = 'latex')
+#t6 <- knitr::kable(list(c6$table), caption = "RF Model", format = 'latex')
 
-{r k2, echo=FALSE, eval=FALSE}
+#I knit these tables to html and used SnagIt to make screen captures
+#which I saved. Easiest way to arrange the tables side-by-side. Strange
+#that knitr doesn't have a nice tool to do this. 
 
-#Label1 <- c("GLM Model", "CART Model", "LDA Model")
-cm1 <- data.frame(c1, c2, c3)
-kable(cm1)
+img1_path <- "matrix_graphics/GLM.png"
+img2_path <- "matrix_graphics/LDA.png"
+img3_path <- "matrix_graphics/CART.png"
+img4_path <- "matrix_graphics/SVM.png"
+img5_path <- "matrix_graphics/KNN.png"
+img6_path <- "matrix_graphics/RF.png"
 
+include_graphics(img1_path)
+include_graphics(img2_path)
+include_graphics(img3_path)
+include_graphics(img4_path)
+include_graphics(img5_path)
+include_graphics(img6_path)
 
+```
 
+Let's intepret the matrices. The x-axis reflects predictions, and the y-axis reflects observations. The sum of a given row is all observations for that classe level. For all models we test, the row totals will be the same, only the prediction (i.e. column) values will vary. 
 
-{r k3, echo=FALSE, evalu=FALSE}
+So in the GLM Model matrix, a value of 4506 in [A, A] indicates that in our training set of 19622 records, we predicted that 4506 records were A and we observed that 4506 were A. But if you look at [A, B], the value is 1074. This indicates that we predicted 1074 were B, when they should have been classified as A. That is, in order to have 100% accuracy, cell [A, A] should be the sum of 4506 and 1047, or 5580. So values on the diagonal of the matrix are where predictions match the observations. Any value in a row that is not on the diagonal is a prediction error. 
 
-Label2 <- c("SVM Model", "KNN Model", "RF Model")
-cm2 <- list(c4, c5, c6)
-kable(cm2)
+So on the first row, our out of bag error rate is 1074/4506+1074, or around 19.2%. Approximating the remaining rows:
+2: 389/3408+389 = 10.2%
+3: 138/3284+138 = 4.0%
+4: 172/3004+172 = 5.4%
+5: 95/3512+95 = 2.6%
 
+The total of these errors is 41.4. The approximates the calcuated GLM accuracy of 40% from fit.glm$results.
 
-
-
-Let's intepret the matrices. The x-axis reflects predictions, and the y-axis reflects observations. So in the GLM Model matrix, a value of 4506 in [x1, y1] indicates that in our training set of 19622 records, we predicted that 4506 records were A and we observed that 4506 were A. But if you look at [x1, y2], the value is 1074. This indicates that we predicted 1074 were B, when they should have been classified as A. So values on the diagonal of the matrix are where predictions match the observations. Any other value on the same row is an error. So on the first row, our out of bag error rate is 1074/4506, or around 23.8%. Repeating for the remaining rows:
-2: 389/3408 = 11.4%
-3: 138/3284 = 4.2%
-4: 172/3004 = 5.7%
-5: 95/3512 = 2.7%
-
-The total of these errors is 47.8. 
-
-
-Why do we have zeros "observed" in the regression models!?
-
-
-http://www.dataschool.io/simple-guide-to-confusion-matrix-terminology/
-
+It may seem odd that some columns are all zeroes in the GLM model. This is a case where the model failed to make any predictions for levels C, D, E of classe. Clearly, not a ggood fit. But you'll notice as the models move from left to right in the table above, our accuracy improves, along with our computation time, as the table below demonstrates. 
 
 ## And the Winner Is...Random Forest!
 
