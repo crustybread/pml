@@ -101,12 +101,12 @@ control <- trainControl(method = "repeatedcv", number = 10, repeats = 3, allowPa
 
 # glm
 set.seed(4939)
-fit.glm <- train(classe~., data=tr1, method="bayesglm", trControl=control)
+glm.t <- system.time(fit.glm <- train(classe~., data=tr1, method="bayesglm", trControl=control) )
 #saveRDS(fit.glm, "fit.glm.rds")
 
 # LDA
-#set.seed(4939)
-#fit.lda <- train(classe~., data=tr1, method="lda", trControl=control)
+set.seed(4939)
+#lda.t <- system.time(fit.lda <- train(classe~., data=tr1, method="lda", trControl=control))
 #saveRDS(fit.lda, "fit.lda.rds")
 
 
@@ -114,23 +114,23 @@ fit.glm <- train(classe~., data=tr1, method="bayesglm", trControl=control)
 #Classification models
 
 # CART
-#set.seed(4939)
-#fit.cart <- train(classe~., data=tr1, method="rpart", trControl=control)
+set.seed(4939)
+#cart.t <- system.time(fit.cart <- train(classe~., data=tr1, method="rpart", trControl=control))
 #saveRDS(fit.cart, "fit.cart.rds")
 
 # SVM
-#set.seed(4939)
-#fit.svm <- train(classe~., data=tr1, method="svmRadial", trControl=control)
+set.seed(4939)
+#svm.t <- system.time(fit.svm <- train(classe~., data=tr1, method="svmRadial", trControl=control))
 #saveRDS(fit.svm, "fit.svm.rds")
 
 # KNN
-#set.seed(4939)
-#fit.knn <- train(classe~., data=tr1, method="knn", trControl=control)
+set.seed(4939)
+#knn.t <- system.time(fit.knn <- train(classe~., data=tr1, method="knn", trControl=control))
 #saveRDS(fit.knn, "fit.knn.rds")
 
 # Random Forest
-#set.seed(4939)
-#fit.rf <- train(classe~., data=tr1, method="rf", trControl=control)
+set.seed(4939)
+#rf.t <- system.time(fit.rf <- train(classe~., data=tr1, method="rf", trControl=control))
 #saveRDS(fit.rf, "fit.rf.rds")
 
 #stopCluster(cluster)
@@ -158,9 +158,36 @@ fit.rf.p <- predict(fit.rf, tr1)
 
 ```
 
+
+
 ## Model Comparison
 
-Before diving into model comparison, let's look at accuracy and out-of-sample (or "out-of-bag") error. Out-of-sample error is estimated in regression algorithms by "mean squared error (MSE)" or "root mean squared error (RMSE)". These would typically be used when the features and outcome are continuous.  In non-regression algorithms "cross-validation" is typically used to accuracy and error. Since the model that ulimately solved the program was non-linear, we'll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I'll use this to explain. 
+Having fit the models, we can look at a breakdown of their respective model accuracy using max(*model*$results$Accuracy). 
+
+``` {r accUracy, echo = FALSE, eval = TRUE}
+
+v <- data.frame(nrow = 6, ncol =2)
+v[1,1] <- "GLM"
+v[2,1] <- "LDA"
+v[3,1] <- "CART"
+v[4,1] <- "SVM"
+v[5,1] <- "KNN"
+v[6,1] <- "RF"
+v[1,2] <- max(fit.glm$results$Accuracy)
+v[2,2] <- max(fit.lda$results$Accuracy)
+v[3,2] <- max(fit.cart$results$Accuracy)
+v[4,2] <- max(fit.svm$results$Accuracy)
+v[5,2] <- max(fit.knn$results$Accuracy)
+v[6,2] <- max(fit.rf$results$Accuracy)
+colnames(v) <- c("Model", "Maximum Accuracy")
+kable(v)
+
+
+```
+
+##And the Winner Is...Random Forest!
+
+Before we blindly accept this result, let's look at accuracy and out-of-sample (or "out-of-bag") error. Out-of-sample error is estimated in regression algorithms by "mean squared error (MSE)" or "root mean squared error (RMSE)". These would typically be used when the features and outcome are continuous.  In non-regression algorithms "cross-validation" is typically used to accuracy and error. Since the RF model that ulimately solved the program was non-linear, we'll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I'll use this to explain. 
 
 Let's look at the trainControl parameters that I'll hold constant while training each model. 
 
@@ -178,7 +205,7 @@ The results obtained when the model was trained is compared with the results of 
 
 Since we specified "repeat = 3" as another trainControl parameter, we repeat the entire process again twice. The final result represents an aggregate of all three runs of the algorithm. 
 
-The confusion matrix will help us compare the results of our models. 
+The confusion matrix will help us understand the results of our models. 
 
 ``` {r confuse, eval = TRUE, echo = FALSE, cache = TRUE, warning=FALSE}
 
@@ -222,24 +249,11 @@ include_graphics(img6_path)
 
 Let's intepret the matrices. The x-axis reflects predictions, and the y-axis reflects observations. The sum of a given row is all observations for that classe level. For all models we test, the row totals will be the same, only the prediction (i.e. column) values will vary. 
 
-So in the GLM Model matrix, a value of 4506 in [A, A] indicates that in our training set of 19622 records, we predicted that 4506 records were A and we observed that 4506 were A. But if you look at [A, B], the value is 1074. This indicates that we predicted 1074 were B, when they should have been classified as A. That is, in order to have 100% accuracy, cell [A, A] should be the sum of 4506 and 1047, or 5580. So values on the diagonal of the matrix are where predictions match the observations. Any value in a row that is not on the diagonal is a prediction error. 
+Let's start with GLM model. It may seem odd that some columns are all zeroes in the GLM model. This is a case where the model doesn't predict anything other than the A and B level. That can't be right. A quick check of fit.glm$result$accuracy indicates only 40% accuracy. That's not going to help us. But we knew regression models were not well suited for classification problems. While LDA doesn't seem to have this issue, let's dispense with GLM and LDA. 
 
-So on the first row, our out of bag error rate is 1074/4506+1074, or around 19.2%. Approximating the remaining rows:
-2: 389/3408+389 = 10.2%
-3: 138/3284+138 = 4.0%
-4: 172/3004+172 = 5.4%
-5: 95/3512+95 = 2.6%
+So let's look at the classification model SVM. This model achived a maximum accuracy of 0.9369935. The value of 5553 in [A, A] indicates that in our training set of 19622 records, we predicted that 5553 records were A and we observed that 5553 were A. But if you look at [A, B], the value is 14.This indicates that we predicted 14 were B, when they should have been classified as A. In fact, everything else on this row other than A should have be classified A. That is, in order to have 100% accuracy, cell [A, A] should be the sum of A (5553), B (14), C (12), D (0) and E (1), or 5580. (As it is, for example, in the RF model.) So values on the diagonal of the matrix are where predictions match the observations. Any value in a row that is not on the diagonal is a prediction error. 
 
-The total of these errors is 41.4. The approximates the calcuated GLM accuracy of 40% from fit.glm$results.
-
-It may seem odd that some columns are all zeroes in the GLM model. This is a case where the model failed to make any predictions for levels C, D, E of classe. Clearly, not a ggood fit. But you'll notice as the models move from left to right in the table above, our accuracy improves, along with our computation time, as the table below demonstrates. 
-
-## And the Winner Is...Random Forest!
-
-We can see the RF Model confusion matrix reflects 100% agreement between what we predict in the training set and what we observe in the training set.  With well over 99% accuracy, this was the algo that predicted the correct Classe values for all 20 test observations. We could "resample" the models to aggregate the results, and/or use PCA to reduce the number of features, but both are unnecessary and could not improve the result.
-
-Luckily, this project is not a real-time application, and we can afford to go with the solution with the highest accuracy. It's not clear that random forest would be a suitable solution in many situations where latency is an issue. This algo took by far the longest to run (almost 25 minutes), even with parallel processing enabled. 
-
+We can see the RF Model confusion matrix reflects 100% agreement between what we predict in the training set and what we observe in the training set. With well over 99% accuracy, this was the algo that predicted the correct Classe values for all 20 test observations. We could "resample" the models to aggregate the results, and/or use PCA to reduce the number of features, but both are unnecessary and could not improve the result.
 
 ```{r finish, echo=FALSE, cache=TRUE, eval=TRUE}
 
@@ -248,4 +262,8 @@ p.classe  <- predict(fit.rf, ts1)
 print(p.classe)
 
 ```
+
+Luckily, this project is not a real-time application, and we can afford to go with the solution with the highest accuracy. It's not clear that random forest would be a suitable solution in many situations where latency is an issue. This algo took by far the longest to run (almost 25 minutes), even with parallel processing enabled. 
+
+
 
