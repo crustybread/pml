@@ -17,6 +17,7 @@ library(doParallel)
 library(corrplot)
 library(knitr)
 library(png)
+library(kableExtra)
 
 rt <- "k:/Machine Learning/"
 setwd(rt)
@@ -77,7 +78,8 @@ Machine learning algorithms generally fall into regression models (e.g. lm), and
 Regression <- c("1. Generalized Linear Model (GLM)", "2. Linear Discriminant Analysis (LDA)", " ", " ")
 Classification <- c("3. Classification and Regression Trees (CART)", "4. Support Vector Machines (SVM)", "5. K-Nearest Neighbors (KNN)", "6. Random Forest (RF)")
 t <- data.frame(Regression, Classification)
-kable(t)
+kable(t, "html") %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 
 
 ```
@@ -162,9 +164,9 @@ fit.rf.p <- predict(fit.rf, tr1)
 
 ## Model Comparison
 
-Having fit the models, we can look at a breakdown of their respective model accuracy using max(*model*$results$Accuracy). 
+Having fit the models, we can look at a breakdown of their respective accuracies using max(*model*\$results\$Accuracy). 
 
-``` {r accUracy, echo = FALSE, eval = TRUE}
+``` {r accUracy, echo = FALSE, eval = TRUE, out.width = "50%"}
 
 v <- data.frame(nrow = 6, ncol =2)
 v[1,1] <- "GLM"
@@ -180,14 +182,16 @@ v[4,2] <- max(fit.svm$results$Accuracy)
 v[5,2] <- max(fit.knn$results$Accuracy)
 v[6,2] <- max(fit.rf$results$Accuracy)
 colnames(v) <- c("Model", "Maximum Accuracy")
-kable(v)
+
+kable(v, "html") %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 
 
 ```
 
-##And the Winner Is...Random Forest!
+**And the Winner Is...Random Forest!**
 
-Before we blindly accept this result, let's look at accuracy and out-of-sample (or "out-of-bag") error. Out-of-sample error is estimated in regression algorithms by "mean squared error (MSE)" or "root mean squared error (RMSE)". These would typically be used when the features and outcome are continuous.  In non-regression algorithms "cross-validation" is typically used to accuracy and error. Since the RF model that ulimately solved the program was non-linear, we'll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I'll use this to explain. 
+Before we blindly accept this result, let's look at accuracy and out-of-sample (or "out-of-bag") error. Out-of-sample error is estimated in regression algorithms by "mean squared error (MSE)" or "root mean squared error (RMSE)". These would typically be used when the features and outcome are continuous.  In non-regression algorithms "cross-validation" is typically used to compute accuracy and error. Since the RF model that ulimately solved the program was non-linear, we'll look at cross-validation is some detail. In cross-validation, we utilize a portion of the training dataset for testing purposes. There are many variants on this. Since our final model uses k-fold cross-validation, I'll use this to explain. 
 
 Let's look at the trainControl parameters that I'll hold constant while training each model. 
 
@@ -203,7 +207,7 @@ We then interate through each of the 10 folds in this manner, holding out a diff
 
 The results obtained when the model was trained is compared with the results of the test. The delta of the correct classifications versus incorrect classifications is tabulated. This value represents the accuracy of the model for a given iteration. Out-of-sample error is 1 - accuracy rate. 
 
-Since we specified "repeat = 3" as another trainControl parameter, we repeat the entire process again twice. The final result represents an aggregate of all three runs of the algorithm. 
+Since we specified "repeat = 3" as another trainControl parameter, we repeat the entire process again twice. The final result represents a resampling (ensemble) of all three runs of the algorithm. 
 
 The confusion matrix will help us understand the results of our models. 
 
@@ -249,11 +253,21 @@ include_graphics(img6_path)
 
 Let's intepret the matrices. The x-axis reflects predictions, and the y-axis reflects observations. The sum of a given row is all observations for that classe level. For all models we test, the row totals will be the same, only the prediction (i.e. column) values will vary. 
 
-Let's start with GLM model. It may seem odd that some columns are all zeroes in the GLM model. This is a case where the model doesn't predict anything other than the A and B level. That can't be right. A quick check of fit.glm$result$accuracy indicates only 40% accuracy. That's not going to help us. But we knew regression models were not well suited for classification problems. While LDA doesn't seem to have this issue, let's dispense with GLM and LDA. 
+Let's start with GLM model. It may seem odd that some columns are all zeroes in this model's matrix. This is a case where the model doesn't predict anything other than the A and B level. That can't be right. A quick check of fit.glm\$results\$accuracy indicates only 40% accuracy. That's not going to help us. But we knew regression models were not well suited for classification problems. While LDA doesn't seem to have this issue, let's dispense with GLM and LDA. 
 
-So let's look at the classification model SVM. This model achived a maximum accuracy of 0.9369935. The value of 5553 in [A, A] indicates that in our training set of 19622 records, we predicted that 5553 records were A and we observed that 5553 were A. But if you look at [A, B], the value is 14.This indicates that we predicted 14 were B, when they should have been classified as A. In fact, everything else on this row other than A should have be classified A. That is, in order to have 100% accuracy, cell [A, A] should be the sum of A (5553), B (14), C (12), D (0) and E (1), or 5580. (As it is, for example, in the RF model.) So values on the diagonal of the matrix are where predictions match the observations. Any value in a row that is not on the diagonal is a prediction error. 
+Let's now look at the classification model SVM. The value of 5553 in [A, A] indicates that in our training set of 19622 records, we predicted that 5553 records were A and we observed that 5553 were A (true positives). But if you look at [A, B], the value is 14. This indicates that we predicted 14 were B, when they should have been classified as A. In fact, everything else on this row other than A should have be classified as A (false positives). That is, in order to have 100% accuracy, cell [A, A] should be the sum of A (5553), B (14), C (12), D (0) and E (1), or 5580. (As it is, for example, in the RF model.) So values on the diagonal of the matrix are where predictions match the observations. Any value in a row that is not on the diagonal is a prediction error. 
 
-We can see the RF Model confusion matrix reflects 100% agreement between what we predict in the training set and what we observe in the training set. With well over 99% accuracy, this was the algo that predicted the correct Classe values for all 20 test observations. We could "resample" the models to aggregate the results, and/or use PCA to reduce the number of features, but both are unnecessary and could not improve the result.
+Therefore, accuracy is everything on the diagonal divided by the total of all the cells in the matrix--19622.
+
+``` {r dia, echo = TRUE, eval= TRUE }
+
+(5553 + 3405 + 3269 + 2903 + 3395) / 19622
+
+```
+
+So out-of-bag error on SVM is 1 - 0.94409, or approx. 0.056.
+
+We can see the RF Model confusion matrix reflects complete agreement between what we predict in the training set and what we observe in the training set. With well over 99% accuracy, this was the algo that predicted the correct Classe values for all 20 test observations. We could "resample" the other models to aggregate the results, and/or use PCA to reduce the number of features, but both are unnecessary and could not improve the result with RF alone.
 
 ```{r finish, echo=FALSE, cache=TRUE, eval=TRUE}
 
@@ -264,6 +278,4 @@ print(p.classe)
 ```
 
 Luckily, this project is not a real-time application, and we can afford to go with the solution with the highest accuracy. It's not clear that random forest would be a suitable solution in many situations where latency is an issue. This algo took by far the longest to run (almost 25 minutes), even with parallel processing enabled. 
-
-
 
